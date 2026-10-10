@@ -642,6 +642,9 @@ class LiteLLMAnthropicMessagesAdapter:
                 message.get("role") == "assistant"
                 and normalized_messages
                 and normalized_messages[-1].get("role") == "assistant"
+                and normalized_messages[-1].get("tool_calls")
+                and not message.get("thinking_blocks")
+                and not message.get("reasoning_content")
             ):
                 previous = normalized_messages[-1]
                 incoming = message.get("content")
