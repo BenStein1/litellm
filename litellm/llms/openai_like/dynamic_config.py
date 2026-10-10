@@ -78,9 +78,7 @@ def create_config_class(provider: SimpleProviderConfig):
                 restored.pop("thinking_blocks", None)
                 if stored:
                     restored["provider_specific_fields"] = {
-                        key: value
-                        for key, value in provider_fields.items()
-                        if key != "reasoning_content"
+                        key: value for key, value in provider_fields.items() if key != "reasoning_content"
                     }
                 return cast(AllMessageValues, restored)
 

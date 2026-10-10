@@ -652,6 +652,7 @@ class LiteLLMAnthropicMessagesAdapter:
                     elif isinstance(existing, str) and isinstance(incoming, str):
                         previous["content"] = existing + incoming
                     else:
+
                         def blocks(content: Any) -> list[Any]:
                             if isinstance(content, list):
                                 return content
