@@ -5167,3 +5167,46 @@ def test_eager_input_streaming_tool_reaches_bedrock_converse_as_beta():
 
     assert data["additionalModelRequestFields"]["anthropic_beta"] == ["fine-grained-tool-streaming-2025-05-14"]
     assert data["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"] == EAGER_INPUT_SCHEMA
+
+def test_merge_deepseek_combines_assistant_fragments_before_tool_result() -> None:
+    messages = [
+        {"role": "user", "content": "Run the tool"},
+        {
+            "role": "assistant",
+            "content": [{"type": "tool_use", "id": "call_1", "name": "run", "input": {}}],
+        },
+        {"role": "assistant", "content": [{"type": "text", "text": "Running now"}]},
+        {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "Success"}],
+        },
+    ]
+    translated = LiteLLMAnthropicMessagesAdapter().translate_anthropic_messages_to_openai(
+        messages=cast(Any, messages),
+        model="deepseek/deepseek-v4",
+        custom_llm_provider="merge",
+    )
+    assert [item["role"] for item in translated] == ["user", "assistant", "tool", "user"]
+    assert translated[1]["content"] == "Running now"
+    assert translated[1]["tool_calls"][0]["id"] == "call_1"
+    assert translated[2]["tool_call_id"] == "call_1"
+    assert translated[-1]["content"] == "continue"
+
+
+def test_non_merge_tool_result_does_not_gain_synthetic_user_turn() -> None:
+    messages = [
+        {
+            "role": "assistant",
+            "content": [{"type": "tool_use", "id": "call_2", "name": "run", "input": {}}],
+        },
+        {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "call_2", "content": "Success"}],
+        },
+    ]
+    translated = LiteLLMAnthropicMessagesAdapter().translate_anthropic_messages_to_openai(
+        messages=cast(Any, messages),
+        model="deepseek/deepseek-v4",
+        custom_llm_provider="openai",
+    )
+    assert [item["role"] for item in translated] == ["assistant", "tool"]
