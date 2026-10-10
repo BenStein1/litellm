@@ -3600,5 +3600,33 @@
       }
     ],
     "default_model_placeholder": "cursor/claude-4-sonnet"
+  },
+  {
+    "provider": "Merge",
+    "provider_display_name": "Merge",
+    "litellm_provider": "merge",
+    "credential_fields": [
+      {
+        "key": "api_base",
+        "label": "API Base",
+        "placeholder": "https://api-gateway.merge.dev/v1",
+        "tooltip": "Merge Gateway OpenAI-compatible API base URL",
+        "required": true,
+        "field_type": "text",
+        "options": null,
+        "default_value": "https://api-gateway.merge.dev/v1"
+      },
+      {
+        "key": "api_key",
+        "label": "API Key",
+        "placeholder": "Enter Merge Gateway API key",
+        "tooltip": "Stored encrypted by LiteLLM and reused by Merge deployments",
+        "required": true,
+        "field_type": "password",
+        "options": null,
+        "default_value": null
+      }
+    ],
+    "default_model_placeholder": "deepseek/deepseek-v4-flash-0731"
   }
 ]
