@@ -1952,3 +1952,21 @@ class TestMergeConsecutiveSystemMessages:
         merged = merge_consecutive_system_messages([{"role": "system"}, {"role": "system"}, {"role": "user", "content": "Hi"}])
 
         assert merged == [{"role": "system"}, {"role": "user", "content": "Hi"}]
+
+@pytest.mark.parametrize(
+    "message, expected_reasoning",
+    [
+        ({"content": "answer", "thinking": "thought"}, "thought"),
+        ({"content": "answer", "provider_specific_fields": {"thinking": "thought"}}, "thought"),
+        ({"content": "answer", "provider_specific_fields": {"reasoning_content": "thought"}}, "thought"),
+        ({"content": "answer", "provider_specific_fields": {}}, None),
+    ],
+)
+def test_extract_reasoning_from_openai_gateway_fields(message, expected_reasoning):
+    from litellm.litellm_core_utils.prompt_templates.common_utils import _extract_reasoning_content
+
+    snapshot = copy.deepcopy(message)
+    reasoning, content = _extract_reasoning_content(message)
+    assert reasoning == expected_reasoning
+    assert content == "answer"
+    assert message == snapshot
