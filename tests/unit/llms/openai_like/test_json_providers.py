@@ -315,3 +315,36 @@ class TestDarkbloom:
 
         assert config is not None
         assert config.custom_llm_provider == "darkbloom"
+
+class TestMergeGateway:
+    def test_merge_models_resolve_to_the_json_provider(self):
+        from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
+        from litellm.llms.openai_like.json_loader import JSONProviderRegistry
+
+        config = JSONProviderRegistry.get("merge")
+        assert config is not None
+        assert config.base_class == "openai_gpt"
+        assert config.special_handling.get("deepseek_reasoning_history") is True
+
+        model, provider, _, api_base = get_llm_provider(
+            model="merge/deepseek/test-model",
+            custom_llm_provider=None,
+            api_base=None,
+            api_key=None,
+        )
+        assert model == "deepseek/test-model"
+        assert provider == "merge"
+        assert api_base == config.base_url
+
+    def test_merge_dynamic_config_accepts_explicit_credentials(self):
+        from litellm.llms.openai_like.dynamic_config import create_config_class
+        from litellm.llms.openai_like.json_loader import JSONProviderRegistry
+
+        provider = JSONProviderRegistry.get("merge")
+        assert provider is not None
+        config = create_config_class(provider)()
+        base, key = config._get_openai_compatible_provider_info(
+            "https://internal-gateway.example/v1", "test-secret"
+        )
+        assert base == "https://internal-gateway.example/v1"
+        assert key == "test-secret"
