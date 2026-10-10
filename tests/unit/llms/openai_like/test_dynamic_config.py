@@ -139,3 +139,63 @@ class TestForceStoreFalse:
             headers={},
         )
         assert params["store"] is True
+
+class TestDeepSeekReasoningHistory:
+    def test_sync_request_restores_thinking_without_mutating_history(self):
+        from litellm.llms.openai_like.dynamic_config import create_config_class
+
+        config = create_config_class(_provider("merge", special_handling={"deepseek_reasoning_history": True}))()
+        original = [
+            {"role": "user", "content": "hello"},
+            {
+                "role": "assistant",
+                "content": "answer",
+                "thinking_blocks": [{"type": "thinking", "thinking": "reasoning"}],
+            },
+        ]
+        request = config.transform_request(
+            model="deepseek/deepseek-v4",
+            messages=original,
+            optional_params={},
+            litellm_params={"custom_llm_provider": "merge"},
+            headers={},
+        )
+        assert request["messages"][1]["reasoning_content"] == "reasoning"
+        assert "thinking_blocks" not in request["messages"][1]
+        assert "reasoning_content" not in original[1]
+
+    @pytest.mark.asyncio
+    async def test_async_request_restores_provider_specific_reasoning(self):
+        from litellm.llms.openai_like.dynamic_config import create_config_class
+
+        config = create_config_class(_provider("merge", special_handling={"deepseek_reasoning_history": True}))()
+        messages = [
+            {
+                "role": "assistant",
+                "content": "answer",
+                "provider_specific_fields": {"reasoning_content": "earlier reasoning"},
+            }
+        ]
+        request = await config.async_transform_request(
+            model="deepseek/deepseek-v4",
+            messages=messages,
+            optional_params={},
+            litellm_params={"custom_llm_provider": "merge"},
+            headers={},
+        )
+        assert request["messages"][0]["reasoning_content"] == "earlier reasoning"
+        assert request["messages"][0].get("provider_specific_fields", {}).get("reasoning_content") is None
+
+    def test_other_models_do_not_gain_synthetic_reasoning(self):
+        from litellm.llms.openai_like.dynamic_config import create_config_class
+
+        config = create_config_class(_provider("merge", special_handling={"deepseek_reasoning_history": True}))()
+        message = {"role": "assistant", "content": "answer"}
+        request = config.transform_request(
+            model="gpt-5",
+            messages=[message],
+            optional_params={},
+            litellm_params={"custom_llm_provider": "merge"},
+            headers={},
+        )
+        assert "reasoning_content" not in request["messages"][0]
