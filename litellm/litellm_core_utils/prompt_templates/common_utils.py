@@ -1918,7 +1918,15 @@ def _extract_reasoning_content(message: dict) -> tuple[str | None, str | None]:
         return message["reasoning_content"], message_content
     elif "reasoning" in message:
         return message["reasoning"], message_content
-    elif isinstance(message_content, str):
+    elif isinstance(message.get("thinking"), str):
+        return message["thinking"], message_content
+    elif isinstance(message.get("provider_specific_fields"), dict):
+        provider_fields = message["provider_specific_fields"]
+        for key in ("thinking", "reasoning_content"):
+            value = provider_fields.get(key)
+            if isinstance(value, str) and value:
+                return value, message_content
+    if isinstance(message_content, str):
         return _parse_content_for_reasoning(message_content)
     return None, message_content
 
