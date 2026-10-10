@@ -54,6 +54,26 @@ class TestChatGPTAuthenticator:
             token = authenticator.get_access_token()
             assert token == "token-new"
 
+    def test_disables_interactive_login_in_headless_processes(self, authenticator, monkeypatch):
+        from litellm.llms.chatgpt.common_utils import GetAccessTokenError
+
+        monkeypatch.delenv("CHATGPT_AUTH_ALLOW_INTERACTIVE_LOGIN", raising=False)
+        with (
+            patch.object(authenticator, "_read_auth_file", return_value=None),
+            patch.object(authenticator, "_login_device_code", side_effect=AssertionError("must not log in")),
+            pytest.raises(GetAccessTokenError, match="interactive"),
+        ):
+            authenticator.get_access_token()
+
+    def test_allows_device_login_when_explicitly_enabled(self, authenticator, monkeypatch):
+        monkeypatch.setenv("CHATGPT_AUTH_ALLOW_INTERACTIVE_LOGIN", "1")
+        with (
+            patch.object(authenticator, "_read_auth_file", return_value=None),
+            patch.object(authenticator, "_get_device_code_cooldown_remaining", return_value=0),
+            patch.object(authenticator, "_login_device_code", return_value={"access_token": "device-token"}),
+        ):
+            assert authenticator.get_access_token() == "device-token"
+
     def test_get_account_id_from_id_token(self, authenticator):
         id_token = _make_jwt(
             {"https://api.openai.com/auth": {"chatgpt_account_id": "acct-123"}}

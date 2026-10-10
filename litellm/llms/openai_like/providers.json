@@ -200,5 +200,14 @@
       "temperature_max": 1.99
     },
     "supported_endpoints": ["/v1/chat/completions"]
+  },
+  "merge": {
+    "base_url": "https://api-gateway.merge.dev/v1",
+    "api_key_env": "MERGE_API_KEY",
+    "api_base_env": "MERGE_API_BASE",
+    "base_class": "openai_gpt",
+    "special_handling": {
+      "deepseek_reasoning_history": true
+    }
   }
 }

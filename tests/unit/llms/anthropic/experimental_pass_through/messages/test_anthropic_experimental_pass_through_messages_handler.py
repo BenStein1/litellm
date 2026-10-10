@@ -1685,3 +1685,22 @@ async def test_anthropic_messages_forwards_safeguards_and_dangerous_tool_use_bet
     assert "anthropic_beta" not in captured["body"]
     assert captured["anthropic-beta"].split(",").count("dangerous-tool-use-2026-09-03") == 1
     assert response["safeguard_results"] == safeguard_results
+
+def test_chatgpt_subscription_uses_responses_route(monkeypatch):
+    import litellm
+    from litellm.llms.anthropic.experimental_pass_through.messages.handler import (
+        _should_route_to_responses_api,
+    )
+
+    monkeypatch.setattr(litellm, "use_chat_completions_url_for_anthropic_messages", False)
+    assert _should_route_to_responses_api("chatgpt", "chatgpt/gpt-5", "gpt-5")
+
+
+def test_chatgpt_subscription_respects_chat_completions_opt_out(monkeypatch):
+    import litellm
+    from litellm.llms.anthropic.experimental_pass_through.messages.handler import (
+        _should_route_to_responses_api,
+    )
+
+    monkeypatch.setattr(litellm, "use_chat_completions_url_for_anthropic_messages", True)
+    assert not _should_route_to_responses_api("chatgpt", "chatgpt/gpt-5", "gpt-5")
