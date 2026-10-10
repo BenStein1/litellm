@@ -3,7 +3,7 @@ Dynamic configuration class generator for JSON-based providers.
 """
 
 from collections.abc import Coroutine
-from typing import Any, Final, Literal, overload
+from typing import Any, Final, Literal, cast, overload
 
 from litellm._logging import verbose_logger
 from litellm.litellm_core_utils.prompt_templates.common_utils import (
@@ -41,6 +41,7 @@ def create_config_class(provider: SimpleProviderConfig):
             self, messages: list[AllMessageValues], model: str, is_async: bool = False
         ) -> list[AllMessageValues] | Coroutine[Any, Any, list[AllMessageValues]]:
             """Transform messages based on special_handling config"""
+            messages = self._restore_deepseek_reasoning_history(model, messages)
 
             # Handle content list to string conversion if configured
             if provider.special_handling.get("convert_content_list_to_string"):
@@ -50,6 +51,40 @@ def create_config_class(provider: SimpleProviderConfig):
                 return super()._transform_messages(messages=messages, model=model, is_async=True)
             else:
                 return super()._transform_messages(messages=messages, model=model, is_async=False)
+
+        def _restore_deepseek_reasoning_history(
+            self, model: str, messages: list[AllMessageValues]
+        ) -> list[AllMessageValues]:
+            if not provider.special_handling.get("deepseek_reasoning_history"):
+                return messages
+            if not model.lower().startswith("deepseek"):
+                return messages
+
+            def restore(message: AllMessageValues) -> AllMessageValues:
+                if message.get("role") != "assistant" or message.get("reasoning_content"):
+                    return message
+
+                thinking_blocks = message.get("thinking_blocks") or []
+                thinking = "".join(
+                    block.get("thinking", "")
+                    for block in thinking_blocks
+                    if isinstance(block, dict) and block.get("type") == "thinking"
+                )
+                fields = message.get("provider_specific_fields")
+                provider_fields = fields if isinstance(fields, dict) else {}
+                stored = provider_fields.get("reasoning_content")
+                reasoning = thinking or (stored if isinstance(stored, str) else None) or " "
+                restored = {**message, "reasoning_content": reasoning}
+                restored.pop("thinking_blocks", None)
+                if stored:
+                    restored["provider_specific_fields"] = {
+                        key: value
+                        for key, value in provider_fields.items()
+                        if key != "reasoning_content"
+                    }
+                return cast(AllMessageValues, restored)
+
+            return [restore(message) for message in messages]
 
         def _get_openai_compatible_provider_info(
             self, api_base: str | None, api_key: str | None
