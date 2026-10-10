@@ -653,7 +653,7 @@ class LiteLLMAnthropicMessagesAdapter:
                         previous["content"] = existing + incoming
                     else:
 
-                        def blocks(content: Any) -> list[Any]:
+                        def blocks(content: object) -> list[object]:
                             if isinstance(content, list):
                                 return content
                             if isinstance(content, str):
