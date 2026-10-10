@@ -636,7 +636,48 @@ class LiteLLMAnthropicMessagesAdapter:
                     assistant_message["reasoning_content"] = reasoning_content
                 new_messages.append(assistant_message)
 
-        return new_messages
+        normalized_messages: list[AllMessageValues] = []
+        for message in new_messages:
+            if (
+                message.get("role") == "assistant"
+                and normalized_messages
+                and normalized_messages[-1].get("role") == "assistant"
+            ):
+                previous = normalized_messages[-1]
+                incoming = message.get("content")
+                if incoming:
+                    existing = previous.get("content")
+                    if not existing:
+                        previous["content"] = incoming
+                    elif isinstance(existing, str) and isinstance(incoming, str):
+                        previous["content"] = existing + incoming
+                    else:
+                        def blocks(content: Any) -> list[Any]:
+                            if isinstance(content, list):
+                                return content
+                            if isinstance(content, str):
+                                return [{"type": "text", "text": content}]
+                            return []
+
+                        previous["content"] = blocks(existing) + blocks(incoming)
+
+                for field in ("tool_calls", "thinking_blocks"):
+                    fragments = message.get(field)
+                    if fragments:
+                        previous[field] = list(previous.get(field) or []) + list(fragments)
+                continue
+
+            normalized_messages.append(message)
+
+        if (
+            custom_llm_provider == "merge"
+            and "deepseek" in (model or "").lower()
+            and normalized_messages
+            and normalized_messages[-1].get("role") == "tool"
+        ):
+            normalized_messages.append(ChatCompletionUserMessage(role="user", content="continue"))
+
+        return normalized_messages
 
     @staticmethod
     def translate_anthropic_thinking_to_reasoning_effort(
